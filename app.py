@@ -3,14 +3,18 @@ import pandas as pd
 import joblib
 
 # Load model dan scaler
-knn = joblib.load('models/knn_model.pkl')
-linear_reg = joblib.load('models/linear_reg_model.pkl')
-rf = joblib.load('models/rf_model.pkl')
-dt = joblib.load('models/dt_model.pkl')
-scaler = joblib.load('models/scaler.pkl')
-label_encoders = {}
-for column in ['model', 'transmisi', 'bahan_bakar']:
-    label_encoders[column] = joblib.load(f'models/label_encoder_{column}.pkl')
+try:
+    knn = joblib.load('models/knn_model.pkl')
+    linear_reg = joblib.load('models/linear_reg_model.pkl')
+    rf = joblib.load('models/rf_model.pkl')
+    dt = joblib.load('models/dt_model.pkl')
+    scaler = joblib.load('models/scaler.pkl')
+    label_encoders = {}
+    for column in ['model', 'transmisi', 'bahan_bakar']:
+        label_encoders[column] = joblib.load(f'models/label_encoder_{column}.pkl')
+except Exception as e:
+    st.error(f"Error loading models: {e}")
+    st.stop()
 
 # Streamlit app
 st.title("Used Car Price Prediction")
