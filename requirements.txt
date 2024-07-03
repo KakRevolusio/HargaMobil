@@ -1,4 +1,6 @@
-streamlit
 pandas
-scikit-learn==0.24.2  # Pastikan versi ini sesuai dengan versi saat Anda menyimpan model
-joblib
+numpy
+scikit-learn
+streamlit
+matplotlib
+seaborn
