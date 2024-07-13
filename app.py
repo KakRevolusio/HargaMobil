@@ -11,9 +11,14 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.metrics import mean_squared_error
 import base64
+import os
 
 # Load dataset
-data = pd.read_csv('data/mmm.csv')
+@st.cache_data
+def load_data(file_path):
+    return pd.read_csv(file_path)
+
+data = load_data('data/mmm.csv')
 
 # Encode categorical data
 le_model = LabelEncoder()
@@ -32,44 +37,50 @@ X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
 # Train models
-knn = KNeighborsRegressor(n_neighbors=5)
-knn.fit(X_train_scaled, y_train)
+def train_models():
+    models = {
+        'KNN': KNeighborsRegressor(n_neighbors=5),
+        'Linear Regression': LinearRegression(),
+        'Random Forest': RandomForestRegressor(n_estimators=100),
+        'Decision Tree': DecisionTreeRegressor()
+    }
+    for model in models.values():
+        model.fit(X_train_scaled, y_train)
+    return models
 
-lr = LinearRegression()
-lr.fit(X_train_scaled, y_train)
-
-rf = RandomForestRegressor(n_estimators=100)
-rf.fit(X_train_scaled, y_train)
-
-dt = DecisionTreeRegressor()
-dt.fit(X_train_scaled, y_train)
-
-# Model evaluation
-models = {'KNN': knn, 'Linear Regression': lr, 'Random Forest': rf, 'Decision Tree': dt}
+models = train_models()
 model_scores = {name: mean_squared_error(y_test, model.predict(X_test_scaled)) for name, model in models.items()}
 
 # Function to add background image from local file
 def add_bg_from_local(image_file):
-    with open(image_file, "rb") as image:
-        encoded_string = base64.b64encode(image.read())
-    st.markdown(
-        f"""
-        <style>
-        .stApp {{
-            background-image: url(data:image/{"jpg"};base64,{encoded_string.decode()});
-            background-size: cover;
-        }}
-        .card {{
-            background-color: white;
-            border-radius: 10px;
-            padding: 20px;
-            margin: 10px 0;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    if os.path.exists(image_file):
+        with open(image_file, "rb") as image:
+            encoded_string = base64.b64encode(image.read())
+        st.markdown(
+            f"""
+            <style>
+            .background-img {{
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 300px;
+                background-image: url(data:image/{"jpg"};base64,{encoded_string.decode()});
+                background-size: cover;
+                background-repeat: no-repeat;
+                z-index: -1;
+            }}
+            .card {{
+                border-radius: 10px;
+                padding: 20px;
+                margin: 10px 0;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+                background: none;
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
 
 # Add background image
 add_bg_from_local('data/background.jpg')
@@ -98,48 +109,17 @@ st.markdown(
         box-shadow: 0 5px #666;
         transform: translateY(4px);
     }
-    .modal {{
-      display: none; 
-      position: fixed; 
-      z-index: 1; 
-      left: 0;
-      top: 0;
-      width: 100%; 
-      height: 100%; 
-      overflow: auto; 
-      background-color: rgb(0,0,0); 
-      background-color: rgba(0,0,0,0.4); 
-      padding-top: 60px; 
-    }}
-    .modal-content {{
-      background-color: #fefefe;
-      margin: 5% auto; 
-      padding: 20px;
-      border: 1px solid #888;
-      width: 80%; 
-      text-align: center;
-      border-radius: 10px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }}
-    .close {{
-      color: #aaa;
-      float: right;
-      font-size: 28px;
-      font-weight: bold;
-    }}
-    .close:hover,
-    .close:focus {{
-      color: black;
-      text-decoration: none;
-      cursor: pointer;
-    }}
     </style>
     """,
     unsafe_allow_html=True
 )
 
 # Streamlit app
+st.markdown('<div class="background-img"></div>', unsafe_allow_html=True)
 st.title('Car Price Prediction')
+
+# Display image below title
+st.image('data/background.jpg', caption='Background Image', use_column_width=True)
 
 # Sidebar menu using buttons
 st.sidebar.header('Menu')
@@ -224,69 +204,20 @@ elif menu_selection == 'Prediksi Harga Mobil':
         features = np.array([[tahun, jarak_tempuh, pajak, mpg, ukuran_mesin, model_encoded]])
         features_scaled = scaler.transform(features)
         if model_choice == 'KNN':
-            prediction = knn.predict(features_scaled)
+            prediction = models['KNN'].predict(features_scaled)
         elif model_choice == 'Linear Regression':
-            prediction = lr.predict(features_scaled)
+            prediction = models['Linear Regression'].predict(features_scaled)
         elif model_choice == 'Random Forest':
-            prediction = rf.predict(features_scaled)
+            prediction = models['Random Forest'].predict(features_scaled)
         else:
-            prediction = dt.predict(features_scaled)
+            prediction = models['Decision Tree'].predict(features_scaled)
         
         # Format the prediction in Rupiah
         formatted_price = f"Rp {prediction[0]:,.0f}".replace(',', '.')
         
-        # Display the result using Streamlit's markdown with custom HTML for pop-up
+        # Display the result below the Predict button
         st.markdown(f"""
-        <style>
-        .modal {{
-          display: block; 
-          position: fixed; 
-          z-index: 1; 
-          left: 0;
-          top: 0;
-          width: 100%; 
-          height: 100%; 
-          overflow: auto; 
-          background-color: rgb(0,0,0); 
-          background-color: rgba(0,0,0,0.4); 
-          padding-top: 60px; 
-        }}
-        .modal-content {{
-          background-color: #fefefe;
-          margin: 5% auto; 
-          padding: 20px;
-          border: 1px solid #888;
-          width: 80%; 
-          text-align: center;
-          border-radius: 10px;
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }}
-        .close {{
-          color: #aaa;
-          float: right;
-          font-size: 28px;
-          font-weight: bold;
-        }}
-        .close:hover,
-        .close:focus {{
-          color: black;
-          text-decoration: none;
-          cursor: pointer;
-        }}
-        </style>
-        <div id="myModal" class="modal">
-          <div class="modal-content">
-            <span class="close" onclick="document.getElementById('myModal').style.display='none'">&times;</span>
-            <p>Predicted Price: {formatted_price}</p>
-          </div>
+        <div class="card">
+        ## Predicted Price: {formatted_price}
         </div>
-        <script>
-        var modal = document.getElementById("myModal");
-        var span = document.getElementsByClassName("close")[0];
-        window.onclick = function(event) {{
-          if (event.target == modal) {{
-            modal.style.display = "none";
-          }}
-        }}
-        </script>
         """, unsafe_allow_html=True)
